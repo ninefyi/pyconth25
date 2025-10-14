@@ -1,0 +1,54 @@
+Screen {
+    layers: base overlay;
+}
+
+.container {
+    height: 100%;
+    margin: 1;
+}
+
+.header-section {
+    height: auto;
+    margin-bottom: 1;
+}
+
+.input-section {
+    height: auto;
+    margin-bottom: 1;
+    padding: 1;
+    border: solid $primary;
+}
+
+.table-section {
+    height: 1fr;
+}
+
+.status-section {
+    height: 3;
+    margin-top: 1;
+}
+
+Input {
+    margin-right: 1;
+}
+
+Button {
+    margin-left: 1;
+}
+
+Label {
+    margin-bottom: 1;
+}
+
+Static.status {
+    text-align: center;
+    color: $text-muted;
+}
+
+Static.error {
+    color: $error;
+}
+
+Static.success {
+    color: $success;
+}

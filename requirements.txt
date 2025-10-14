@@ -1,0 +1,15 @@
+# Core Python packages
+python-dotenv
+
+# HTTP client for API requests
+httpx
+
+# Azure SDK packages
+azure-identity
+msgraph-sdk
+
+# Textual TUI framework
+textual[dev]
+rich
+
+
