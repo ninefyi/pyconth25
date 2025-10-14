@@ -1,4 +1,4 @@
-# PyConTH25 - MongoDB Atlas Projects Viewer
+# PyConTH25 - MongoDB Atlas Projects Manager
 
 <h2>Boosting Operational Productivity with Python and Textual: Modern Terminal Dashboards for Developers</h2>
 
@@ -20,10 +20,9 @@ A modern terminal-based application built with Python 3.12+ and the Textual fram
 
 ## Quick Start
 
-1. **Clone and setup**:
+1. **Fork and setup**:
    ```bash
    cd pyconth25
-   python setup.py
    ```
 
 2. **Configure your Atlas API credentials**:
@@ -34,13 +33,14 @@ A modern terminal-based application built with Python 3.12+ and the Textual fram
 
    Add your Atlas API credentials:
    ```env
-   ATLAS_PUBLIC_KEY=your_public_key_here
-   ATLAS_PRIVATE_KEY=your_private_key_here
+   ATLAS_PUBLIC_KEY=your_atlas_public_key_here
+   ATLAS_PRIVATE_KEY=your_atlas_private_key_here
+   ATLAS_ORG_ID=your_organization_id_here
    ```
 
 3. **Run the application**:
    ```bash
-   python atlas_projects_viewer.py
+   python atlas_projects_manager.py
    ```
 
 ## Getting Atlas API Credentials
@@ -61,14 +61,11 @@ A modern terminal-based application built with Python 3.12+ and the Textual fram
 - **Projects Table**: View all projects with:
   - Project Name
   - Project ID
-  - Organization ID
   - Creation Date
 - **Status Display**: Real-time feedback on operations
 
 ### Keyboard Shortcuts
 - `Ctrl+C` or `q`: Quit the application
-- `Tab`: Navigate between input fields
-- `Enter`: Load projects (when button is focused)
 
 ## Architecture
 
@@ -82,7 +79,7 @@ The application is built with:
 ### File Structure
 ```
 pyconth25/
-├── atlas_projects_viewer.py    # Main application
+├── atlas_projects_manager.py    # Main application
 ├── requirements.txt             # Python dependencies
 ├── setup.py                    # Setup script
 ├── .env.example               # Environment template
@@ -114,7 +111,7 @@ All dependencies are listed in `requirements.txt`:
 pip install -r requirements.txt
 
 # Run with development features
-python atlas_projects_viewer.py
+python atlas_projects_manager.py
 ```
 
 ## Troubleshooting
