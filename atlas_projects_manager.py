@@ -185,8 +185,8 @@ class ClusterViewScreen(Screen):
     """Screen for viewing clusters in a specific project."""
     
     BINDINGS = [
-        ("escape", "back", "Back"),
-        ("q", "quit", "Quit"),
+        ("escape", "back", ""),
+        ("q", "quit", ""),
     ]
     
     def __init__(self, project_data: ProjectData, api_client: AtlasAPI):
@@ -272,11 +272,11 @@ class AtlasProjectsApp(App):
     CSS_PATH = "atlas_projects_manager.tcss"
 
     BINDINGS = [
-        ("a", "authenticate", "Authenticate"),
-        ("n", "create", "New"),
-        ("d", "delete", "Delete"),
-        ("v", "cluster", "View"),
-        ("q", "quit", "Quit"),
+        ("a", "authenticate", ""),
+        ("n", "create", ""),
+        ("d", "delete", ""),
+        ("v", "cluster", ""),
+        ("q", "quit", ""),
     ]
     
     # Reactive attributes
@@ -328,7 +328,6 @@ class AtlasProjectsApp(App):
     async def fetch_projects(self, public_key: str, private_key: str) -> None:
         """Fetch projects from Atlas API."""
         await self.update_status("Loading projects...", "")
-        
         try:
             # Close existing client if any
             if self.api_client:
@@ -462,6 +461,7 @@ class AtlasProjectsApp(App):
         if event.data_table.id == "projects_table":
             # Auto-open clusters when a project row is selected
             await self.action_cluster()
+            self.refresh_bindings()
 
 
 def main():
