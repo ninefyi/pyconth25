@@ -45,6 +45,19 @@ Static.status {
     color: $text-muted;
 }
 
+Static.title {
+    text-align: center;
+    text-style: bold;
+    color: $primary;
+    margin: 1;
+}
+
+Static.subtitle {
+    text-align: center;
+    color: $text-muted;
+    margin-bottom: 1;
+}
+
 Static.error {
     color: $error;
 }

@@ -9,8 +9,10 @@ A modern terminal-based application built with Python 3.12+ and the Textual fram
 - 🎯 **Modern TUI**: Beautiful terminal user interface powered by Textual
 - 🔐 **Secure Authentication**: Uses MongoDB Atlas Administration API v2.0
 - 📊 **Project Overview**: View all your Atlas projects in a clean table format
+- 🔍 **Cluster Details**: Click on any project to view its clusters with detailed information
 - 🌍 **Environment Support**: Load credentials from environment variables
 - ⚡ **Async Performance**: Fast, non-blocking HTTP requests with httpx
+- 🖱️ **Interactive Navigation**: Use mouse clicks or keyboard to navigate between views
 
 ## Prerequisites
 
@@ -57,15 +59,33 @@ A modern terminal-based application built with Python 3.12+ and the Textual fram
 ## Application Features
 
 ### Main Interface
-- **Credentials Input**: Enter your Atlas API keys
-- **Projects Table**: View all projects with:
+
+- **Projects View**: Main screen showing all Atlas projects
   - Project Name
-  - Project ID
+  - Project ID  
   - Creation Date
+- **Cluster View**: Detailed view of clusters in a selected project
+  - Cluster Name
+  - Status (Active, Paused, etc.)
+  - Cloud Provider (AWS, Azure, GCP)
+  - Region
+  - Instance Size
+  - MongoDB Version
 - **Status Display**: Real-time feedback on operations
 
+### Navigation
+
+- **Mouse**: Click on any project row to view its clusters
+- **Keyboard**: Use arrow keys to select, then press Enter
+- **Back Navigation**: Press Escape or 'b' to return to projects view
+
 ### Keyboard Shortcuts
-- `Ctrl+C` or `q`: Quit the application
+
+- `a`: Authenticate and load projects
+- `v`: View clusters for selected project
+- `Escape` Back to projects view (from cluster view)
+- `d`: Delete selected project
+- `q`: Quit the application
 
 ## Architecture
 
@@ -81,7 +101,6 @@ The application is built with:
 pyconth25/
 ├── atlas_projects_manager.py    # Main application
 ├── requirements.txt             # Python dependencies
-├── setup.py                    # Setup script
 ├── .env.example               # Environment template
 ├── .env                       # Your credentials (create this)
 └── README.md                  # This file

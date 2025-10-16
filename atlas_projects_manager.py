@@ -8,7 +8,6 @@ in your Atlas organization using a modern terminal UI built with Textual.
 """
 
 import os
-import asyncio
 import json
 from datetime import datetime
 from typing import List, Dict, Any, Optional
@@ -16,11 +15,12 @@ from typing import List, Dict, Any, Optional
 import httpx
 from dotenv import load_dotenv
 from textual.app import App, ComposeResult
-from textual.containers import Container, Horizontal, Vertical
+from textual.containers import Container, Vertical
 from textual.widgets import (
-    Header, Footer, Static, DataTable, Button, Input, Label
+    Header, Footer, Static, DataTable
 )
 from textual.reactive import reactive
+from textual.screen import Screen
 from textual import on
 
 # Load environment variables
@@ -36,6 +36,32 @@ class ProjectData:
         self.created = project_data.get('created', '')
         self.cluster_count = project_data.get('clusterCount', 0)
         self.links = project_data.get('links', [])
+
+
+class ClusterData:
+    """Data model for Atlas clusters."""
+    
+    def __init__(self, cluster_data: Dict[str, Any]):
+        self.id = cluster_data.get('id', '')
+        self.name = cluster_data.get('name', '')
+        self.connection_strings = cluster_data.get('connectionStrings', {})
+        self.cluster_type = cluster_data.get('clusterType', '')
+        self.mongo_db_version = cluster_data.get('mongoDBVersion', '')
+        self.state_name = cluster_data.get('stateName', '')
+        self.created_date = cluster_data.get('createDate', '')
+        self.provider_settings = cluster_data.get('providerSettings', {})
+        self.backup_enabled = cluster_data.get('backupEnabled', False)
+        self.encryption_at_rest_provider = cluster_data.get('encryptionAtRestProvider', '')
+        
+        # Extract provider and region info
+        if self.provider_settings:
+            self.provider_name = self.provider_settings.get('providerName', 'Unknown')
+            self.region_name = self.provider_settings.get('regionName', 'Unknown')
+            self.instance_size_name = self.provider_settings.get('instanceSizeName', 'Unknown')
+        else:
+            self.provider_name = 'Unknown'
+            self.region_name = 'Unknown'
+            self.instance_size_name = 'Unknown'
 
 
 class AtlasAPI:
@@ -96,6 +122,34 @@ class AtlasAPI:
         except json.JSONDecodeError:
             raise Exception("Invalid JSON response from API")
     
+    async def get_clusters(self, project_id: str) -> List[ClusterData]:
+        """Fetch all clusters for a specific project from Atlas API."""
+        url = f"{self.base_url}/groups/{project_id}/clusters"
+        
+        try:
+            # Use HTTP Digest Authentication with API keys
+            auth = httpx.DigestAuth(self.public_key, self.private_key)
+            headers = {
+                "Accept": "application/vnd.atlas.2023-01-01+json",
+                "Content-Type": "application/json"
+            }
+            
+            response = await self.client.get(url, auth=auth, headers=headers)
+            response.raise_for_status()
+            
+            data = response.json()
+            clusters = []
+            
+            for cluster_data in data.get('results', []):
+                clusters.append(ClusterData(cluster_data))
+            
+            return clusters
+            
+        except httpx.HTTPError as e:
+            raise Exception(f"API request failed: {e}")
+        except json.JSONDecodeError:
+            raise Exception("Invalid JSON response from API")
+    
     async def close(self):
         """Close the HTTP client."""
         await self.client.aclose()
@@ -114,15 +168,114 @@ class ProjectsTable(DataTable):
         self.add_columns("Project Name", "Project ID", "Created Date")
 
 
+class ClustersTable(DataTable):
+    """Custom DataTable for displaying Atlas clusters."""
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.cursor_type = "row"
+        self.zebra_stripes = True
+        
+    def on_mount(self) -> None:
+        """Set up the table columns."""
+        self.add_columns("Cluster Name", "Status", "Provider", "Region", "Instance Size", "MongoDB Version")
+
+
+class ClusterViewScreen(Screen):
+    """Screen for viewing clusters in a specific project."""
+    
+    BINDINGS = [
+        ("escape", "back", "Back"),
+        ("q", "quit", "Quit"),
+    ]
+    
+    def __init__(self, project_data: ProjectData, api_client: AtlasAPI):
+        super().__init__()
+        self.project_data = project_data
+        self.api_client = api_client
+        self.clusters: List[ClusterData] = []
+    
+    def compose(self) -> ComposeResult:
+        """Compose the cluster view UI."""
+        yield Header(show_clock=True)
+        with Container(classes="container"):
+            # Header section
+            with Vertical(classes="header-section"):
+                yield Static(f"Clusters in Project: {self.project_data.name}", classes="title")
+                yield Static(f"Project ID: {self.project_data.id}", classes="subtitle")
+            
+            # Table section
+            with Vertical(classes="table-section"):
+                yield ClustersTable(id="clusters_table")
+            
+            # Status section
+            with Vertical(classes="status-section"):
+                yield Static("Loading clusters...", id="cluster_status_display", classes="status")
+        
+        yield Footer()
+    
+    async def on_mount(self) -> None:
+        """Initialize the cluster view."""
+        self.title = f"Clusters - {self.project_data.name}"
+        await self.fetch_clusters()
+    
+    async def fetch_clusters(self) -> None:
+        """Fetch clusters for the current project."""
+        try:
+            await self.update_status("Loading clusters...")
+            
+            # Fetch clusters
+            clusters = await self.api_client.get_clusters(self.project_data.id)
+            self.clusters = clusters
+            
+            # Update the table
+            await self.update_clusters_table()
+            
+            count = len(clusters)
+            await self.update_status(f"Successfully loaded {count} cluster{'s' if count != 1 else ''}")
+            
+        except Exception as e:
+            await self.update_status(f"Error loading clusters: {str(e)}")
+    
+    async def update_clusters_table(self) -> None:
+        """Update the clusters table with fetched data."""
+        table = self.query_one("#clusters_table", ClustersTable)
+        table.clear()
+        
+        for cluster in self.clusters:
+            table.add_row(
+                cluster.name or "Unnamed Cluster",
+                cluster.state_name or "Unknown",
+                cluster.provider_name,
+                cluster.region_name,
+                cluster.instance_size_name,
+                cluster.mongo_db_version or "Unknown"
+            )
+    
+    async def update_status(self, message: str) -> None:
+        """Update the status display."""
+        status_display = self.query_one("#cluster_status_display", Static)
+        status_display.update(message)
+    
+    def action_back(self) -> None:
+        """Go back to the projects view."""
+        self.app.pop_screen()
+    
+    def action_quit(self) -> None:
+        """Quit the application."""
+        self.app.exit()
+
+
 class AtlasProjectsApp(App):
-    """Main Textual application for viewing Atlas projects."""
+    """Main Textual application for managing Atlas projects."""
 
     CSS_PATH = "atlas_projects_manager.tcss"
 
     BINDINGS = [
         ("a", "authenticate", "Authenticate"),
-        ("n", "create", "New Project"),
+        ("n", "create", "New"),
         ("d", "delete", "Delete"),
+        ("v", "cluster", "View"),
         ("q", "quit", "Quit"),
     ]
     
@@ -146,7 +299,7 @@ class AtlasProjectsApp(App):
         with Container(classes="container"):
             # Header section
             with Vertical(classes="header-section"):
-                yield Static("MongoDB Atlas Projects Viewer", classes="title")            
+                yield Static("MongoDB Atlas Projects Manager", classes="title")
             # Table section
             with Vertical(classes="table-section"):
                 yield ProjectsTable(id="projects_table")
@@ -159,7 +312,7 @@ class AtlasProjectsApp(App):
     
     def on_mount(self) -> None:
         """Initialize the application."""
-        self.title = "MongoDB Atlas Projects Viewer"
+        self.title = "MongoDB Atlas Projects Manager"
         
 
         if not all([
@@ -266,6 +419,49 @@ class AtlasProjectsApp(App):
         """Authenticate with Azure"""
         await self.update_status("Authenticating...")
         await self.fetch_projects(self.public_key, self.private_key)
+
+    async def action_cluster(self):
+        """View clusters for the selected project."""
+        table = self.query_one("#projects_table", DataTable)
+
+        if table.cursor_row is None or table.cursor_row < 0:
+            await self.update_status("Please select a project to view clusters")
+            return
+
+        try:
+            selected_row = table.get_row_at(table.cursor_row)
+            project_name = selected_row[0]
+            project_id = selected_row[1]
+
+            # Find the project data
+            selected_project = None
+            for project in self.projects:
+                if project.id == project_id:
+                    selected_project = project
+                    break
+
+            if selected_project:
+                await self.update_status(f"Opening clusters for: {project_name}")
+                
+                # Create API client if not available
+                if not self.api_client:
+                    self.api_client = AtlasAPI(self.public_key, self.private_key)
+                
+                # Push the cluster view screen
+                cluster_screen = ClusterViewScreen(selected_project, self.api_client)
+                self.push_screen(cluster_screen)
+            else:
+                await self.update_status("Could not find project data", "error")
+
+        except (IndexError, Exception) as e:
+            await self.update_status(f"Error viewing clusters: {str(e)}", "error")
+
+    @on(DataTable.RowSelected)
+    async def on_row_selected(self, event: DataTable.RowSelected) -> None:
+        """Handle row selection in the projects table."""
+        if event.data_table.id == "projects_table":
+            # Auto-open clusters when a project row is selected
+            await self.action_cluster()
 
 
 def main():
