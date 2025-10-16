@@ -12,10 +12,11 @@ import json
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 
+from anyio import sleep
 import httpx
 from dotenv import load_dotenv
 from textual.app import App, ComposeResult
-from textual.containers import Container, Vertical
+from textual.containers import Container, Vertical, Horizontal, VerticalScroll
 from textual.widgets import (
     Header, Footer, Static, DataTable
 )
@@ -201,8 +202,8 @@ class ClusterViewScreen(Screen):
         with Container(classes="container"):
             # Header section
             with Vertical(classes="header-section"):
-                yield Static(f"Clusters in Project: {self.project_data.name}", classes="title")
-                yield Static(f"Project ID: {self.project_data.id}", classes="subtitle")
+                yield Static(f"[orange]Project:[/orange] {self.project_data.name}")
+                yield Static("[yellow]<esc>[/yellow] back | [yellow]<q>[/yellow] quit")
             
             # Table section
             with Vertical(classes="table-section"):
@@ -276,7 +277,7 @@ class AtlasProjectsApp(App):
         ("n", "create", ""),
         ("d", "delete", ""),
         ("v", "cluster", ""),
-        ("q", "quit", ""),
+        ("q,escape", "quit", ""),
     ]
     
     # Reactive attributes
@@ -299,11 +300,11 @@ class AtlasProjectsApp(App):
         with Container(classes="container"):
             # Header section
             with Vertical(classes="header-section"):
-                yield Static("MongoDB Atlas Projects Manager", classes="title")
+                yield Static("[yellow]<a>[/yellow] authentication | [yellow]<q,esc>[/yellow]:quit")
+                yield Static("[yellow]<v>[/yellow] view clusters | [yellow]<d>[/yellow] delete project")
             # Table section
             with Vertical(classes="table-section"):
                 yield ProjectsTable(id="projects_table")
-            
             # Status section
             with Vertical(classes="status-section"):
                 yield Static("Ready", id="status_display", classes="status")
@@ -421,6 +422,7 @@ class AtlasProjectsApp(App):
 
     async def action_cluster(self):
         """View clusters for the selected project."""
+
         table = self.query_one("#projects_table", DataTable)
 
         if table.cursor_row is None or table.cursor_row < 0:
@@ -440,8 +442,10 @@ class AtlasProjectsApp(App):
                     break
 
             if selected_project:
-                await self.update_status(f"Opening clusters for: {project_name}")
                 
+                await self.update_status(f"Loading clusters for project: {project_name}")
+                await sleep (1)
+
                 # Create API client if not available
                 if not self.api_client:
                     self.api_client = AtlasAPI(self.public_key, self.private_key)
@@ -449,6 +453,7 @@ class AtlasProjectsApp(App):
                 # Push the cluster view screen
                 cluster_screen = ClusterViewScreen(selected_project, self.api_client)
                 self.push_screen(cluster_screen)
+                await self.update_status("")
             else:
                 await self.update_status("Could not find project data", "error")
 
